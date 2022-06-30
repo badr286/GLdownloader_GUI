@@ -1,152 +1,133 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-public class GUI{
+class GUI{
 
 	JFrame frame;
-
 	JButton getFileData_btn;
 	JButton downloadFile_btn;
-
 	JLabel fileData_label;
-
 	JTextField id_field;
 
-	public GUI(){
-		frame = new JFrame(); // Window 240x540
+	GUI(){
+
+		frame = new JFrame(); // Window 540x240
+
 		JPanel panel = new JPanel();
-
-
 		panel.setBorder(BorderFactory.createEmptyBorder());
 		panel.setLayout(new GridBagLayout());
 
 
-		// Defining Components
 		JLabel id_label = new JLabel("ID: ");
 		id_field = new JTextField();
 
 		getFileData_btn = new JButton("Get Data");
 		getFileData_btn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				getFileData_btn_function();
+				getFileData_btn_function_inNewThread();
 			}
 		});
-
-		fileData_label = new JLabel("", SwingConstants.LEFT);
-		fileData_label.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-
 
 		downloadFile_btn = new JButton("Download");
 		downloadFile_btn.setEnabled(false);
 
 
+		fileData_label = new JLabel("", SwingConstants.LEFT); // text-align: Left
+		fileData_label.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+
 
 		// PACKING Components
 
-			// ID LABEL
+		// ID LABEL
 		GridBagConstraints c = new GridBagConstraints();
-		c.insets = new Insets(5,5,5,5);
+		c.insets = new Insets(5,5,5,5); // To Keep Spaces Between Components
 
 		c.gridx = 0; c.gridy = 0;
 		c.ipadx = 1;
 		panel.add(id_label, c);
 
-			// ID FIELD
+		// ID FIELD
 		c.gridx = 1; c.gridy = 0;
 		c.ipadx = 264; // Every 1 letter, gets 8 padx. and since the id length is 33 letters, 33x8 =
 		panel.add(id_field, c);
 
-			// GetData BTN
+		// GetData BTN
 		c.gridx = 2; c.gridy = 0;
 		c.ipadx = 1;
 		panel.add(getFileData_btn, c);
 
-			// FileData Label
+		// FileData Label
 		c.gridx = 1; c.gridy = 1;
 		c.ipadx = 1;
 		c.ipady = 1;
-		c.fill = GridBagConstraints.HORIZONTAL;
+		c.fill = GridBagConstraints.HORIZONTAL; // To Fill the X-axis
 		panel.add(fileData_label, c);
 
-			// DownloadFile btn
+		// DownloadFile btn
 		c.gridx = 2; c.gridy = 2;
 		c.ipadx = 1;
 		c.ipady = 1;
 		panel.add(downloadFile_btn, c);
 
 
-
 		// Frame Settings
 		frame.add(panel);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setTitle("TITLE");
-
 		frame.pack();
 		frame.setSize(540,240);
-
 		frame.setVisible(true);
 	}
 
 
-	static String fileInfo_String(String[] info){
-		return "<html>File Name: " + info[0] + "<br>FileType: " + info[1] + "<br>FileSize: " + info[2] + "MB";
-	}
+
+
+
 
 
 	public void getFileData_btn_function(){
+		getFileData_btn.setEnabled(false);
 
-		new SwingWorker(){
+		String vid_id = id_field.getText();
+		String[] fileData = getFileData(vid_id);
+
+		String fileData_str = "<html>File Name: " + fileData[0] + "<br>FileType: " + fileData[1] + "<br>FileSize: " + fileData[2] + "MB";
+		fileData_label.setText(fileData_str);
+
+		// Preparing The Download Button
+		downloadFile_btn.setEnabled(true);
+		downloadFile_btn.addActionListener(new ActionListener() {
 			@Override
+			public void actionPerformed(ActionEvent e) {
+				downloadFile_btn_function_inNewThread(fileData);
+			}
+		});
+
+		getFileData_btn.setEnabled(true);
+	}
+
+	public void getFileData_btn_function_inNewThread(){
+		new SwingWorker(){
 			protected Object doInBackground() throws Exception {
-				String vid_id = id_field.getText();
-				String[] sourceData = getSourceData(vid_id);
-				String fileInfo =  fileInfo_String( sourceData );
-
-				fileData_label.setText(fileInfo);
-
-				// Preparing The Download Button
-				downloadFile_btn.setEnabled(true);
-
-				downloadFile_btn.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						new SwingWorker(){
-							@Override
-							protected Object doInBackground() throws Exception {
-
-								String oldText = fileData_label.getText();
-								fileData_label.setText(oldText + "<br>Downloading..");
-
-								downloadFile_btn.setEnabled(false);
-								getFileData_btn.setEnabled(false);
-
-								download(sourceData);
-
-								fileData_label.setText(oldText + "<br>Downloaded!");
-								getFileData_btn.setEnabled(true);
-
-								return null;
-							}
-						}.execute();
-
-					}
-				});
-
+				getFileData_btn_function();
 				return null;
 			}
 		}.execute();
-
 	}
 
-	// HTTPURLCONNECTION THINGS
 
-	static String[] getSourceData(String vid_id){
-		String[] info;
 
+
+
+
+
+	static String[] getFileData(String vid_id){
 		try{
 			String vid_url = "https://drive.google.com/uc?export=download&id=" + vid_id + "&confirm=AYE";
 			HttpURLConnection connection = (HttpURLConnection) new URL(vid_url).openConnection();
@@ -161,11 +142,11 @@ public class GUI{
 			String size_str = String.valueOf(size);
 
 
-			info = new String[] {name, type, size_str, sourceUrl};
+			String[] info = new String[] {name, type, size_str, sourceUrl};
 //			info[0] = name;
 //			info[1] = type;
 //			info[2] = size_str;
-//			info[3] = sourceUrl
+//			info[3] = sourceUrl;
 
 			return info;
 
@@ -185,9 +166,15 @@ public class GUI{
 		//return header.split(';')[1].replace('filename=', '').replace('"', '')
 	}
 
-	static void download(String[] sourceData){
-		String sourceUrl = sourceData[3];
-		String fileName = sourceData[0];
+
+
+
+
+
+
+	static void download(String[] fileData){
+		String sourceUrl = fileData[3];
+		String fileName = fileData[0];
 
 		try{
 			HttpURLConnection connection = (HttpURLConnection) new URL(sourceUrl).openConnection();
@@ -213,14 +200,33 @@ public class GUI{
 		}
 		catch (Exception e){ System.out.println(e); }
 
-
-
-
 	}
+
+	public void downloadFile_btn_function(String[] fileData){
+		String oldText = fileData_label.getText();
+		fileData_label.setText(oldText + "<br>Downloading..");
+
+		downloadFile_btn.setEnabled(false);
+		getFileData_btn.setEnabled(false);
+
+		download(fileData);
+
+		fileData_label.setText(oldText + "<br>Downloaded!");
+		getFileData_btn.setEnabled(true);
+	}
+
+	public void downloadFile_btn_function_inNewThread(String[] fileData){
+		new SwingWorker(){
+			protected Object doInBackground() throws Exception {
+				downloadFile_btn_function(fileData);
+				return null;
+			}
+		}.execute();
+	}
+
+
 
 	public static void main(String[] args) {
 		new GUI();
-
 	}
-
 }
